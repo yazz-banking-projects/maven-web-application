@@ -3,7 +3,7 @@ node{
 def mavenHome = tool name: "maven3.9.4"
 
     stage('CheckoutCode'){
-    git branch: 'stage', credentialsId: '34d6ddde-f364-431c-9086-5d5d9a5d7f3d', url: 'https://github.com/yazz-banking-projects/maven-web-application.git'
+git credentialsId: '34d6ddde-f364-431c-9086-5d5d9a5d7f3d', url: 'https://github.com/yazz-banking-projects/maven-web-application.git'
 }
 
 stage('Build'){
