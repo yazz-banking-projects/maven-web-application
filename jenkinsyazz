@@ -1,0 +1,90 @@
+pipeline {
+    
+    agent any 
+    
+    tools {
+  maven 'maven3.9.4'
+}
+options {
+  buildDiscarder logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '5', daysToKeepStr: '', numToKeepStr: '5')
+}
+triggers {
+  cron ('* * * * * ')
+}
+
+    
+    stages {
+        
+        stage('CheckoutCode') {
+            steps {
+                git credentialsId: '34d6ddde-f364-431c-9086-5d5d9a5d7f3d', url: 'https://github.com/yazz-banking-projects/maven-web-application.git'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh "mvn clean package"
+    }
+    
+        }
+        stage('ExecuteSonarQube') {
+            steps {
+                sh "mvn clean sonar:sonar"
+    }
+    
+        }
+        stage('UploadIntoNexus') {
+            steps {
+                sh "mvn clean deploy"
+    }
+    
+        }
+         stage('DeployIntoContainer') {
+            steps {
+               deploy adapters: [tomcat9(credentialsId: '900c9386-8a60-4fdf-bc8a-a162ed242401', path: '', url: 'http://65.2.30.234:8080/')], contextPath: null, war: '**/maven-web-application.war'
+    }
+    
+   
+}
+        
+}
+post {
+  success {
+       sendSlackNotifications(currentBuild.result)
+
+      
+    // One or more steps need to be included within each condition's block.
+  }
+  failure {
+       sendSlackNotifications(currentBuild.result)
+
+    // One or more steps need to be included within each condition's block.
+  }
+}
+
+    }
+
+def sendSlackNotifications(String buildStatus = 'STARTED') {
+  // build status of null means successful
+  buildStatus =  buildStatus ?: 'SUCCESSFUL'
+
+  // Default values
+  def colorName = 'RED'
+  def colorCode = '#FF0000'
+  def subject = "${buildStatus}: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'"
+  def summary = "${subject} (${env.BUILD_URL})"
+
+  // Override default values based on build status
+  if (buildStatus == 'STARTED') {
+    color = 'YELLOW'
+    colorCode = '#FFFF00'
+  } else if (buildStatus == 'SUCCESSFUL') {
+    color = 'GREEN'
+    colorCode = '#00FF00'
+  } else {
+    color = 'RED'
+    colorCode = '#FF0000'
+  }
+
+  // Send notifications
+  slackSend (color: colorCode, message: summary,channel: "#buildnotifications")
+}
